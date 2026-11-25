@@ -10,15 +10,24 @@ android {
         applicationId 'es.dani.skullking'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName '1.1'
+    }
+
+    // Clave fija: así cada APK nuevo se instala encima del anterior sin perder el ranking
+    signingConfigs {
+        fixed {
+            storeFile file('skullking.keystore')
+            storePassword 'skullking'
+            keyAlias 'skullking'
+            keyPassword 'skullking'
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            // Firmado con la clave de debug para poder instalarlo sin configurar nada más
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.fixed
         }
     }
 

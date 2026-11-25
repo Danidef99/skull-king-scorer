@@ -7,6 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+/* VOICE: pique de mesa entre amigos; rápido de tocar con una mano
+IDEA: la hoja de puntuación del capitán bajo una bandera roja
+PICTURE: el propio marcador: una tarjeta por jugador con apuesta, bazas y bonus
+COLOUR and TYPE: rojo bandera dominante, hueso y tinta, acento verde mar; Pirata One + Barlow
+LAYOUT: banda roja con ronda y clasificación, tarjetas en rejilla, barra fija para cerrar ronda, historial */
 :root{color-scheme:light dark;--bg:light-dark(#f6f3ed,#0f1013);--ink:light-dark(#18171b,#f1ece2);--card:light-dark(#fff,#1b1d22);--line:light-dark(#e2dbcf,#2e3139);--mute:light-dark(#6c665f,#a39c91);--red:#b30e29;--bone:#f6efe2;--sea:light-dark(#0b7a70,#45c9b8);--bad:light-dark(#b30e29,#ff7084)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
@@ -23,6 +28,8 @@ h2{font:400 30px/1.1 'Pirata One',serif;margin:24px 0 12px}
 .rk li:first-child{background:var(--bone);color:var(--red)}
 .rk b{font-weight:700}
 .rk .hat{width:28px;height:14px;align-self:center;flex:none}
+.lb th:nth-child(2),.lb td:nth-child(2){text-align:left}
+.lb .hat{width:26px;height:13px;vertical-align:-1px;margin-right:6px}
 .poster .hat{display:block;width:120px;height:56px;margin:-4px auto 6px}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
@@ -98,6 +105,7 @@ const def=()=>({phase:'setup',players:['','','',''],rounds:10,hist:[],draft:[]})
 let S;
 try{S=JSON.parse(localStorage.getItem(K))}catch(e){S=null}
 if(!S||!S.phase||!Array.isArray(S.players))S=def();
+if(!S.stats||typeof S.stats!=='object')S.stats={};
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const app=document.getElementById('app');
@@ -111,6 +119,34 @@ const sign=v=>v>0?'+'+v:v<0?'−'+Math.abs(v):'0';
 const num=v=>v<0?'−'+Math.abs(v):String(v);
 const fresh=()=>S.players.map(()=>({bid:0,won:0,bonus:0}));
 const rank=()=>{const t=totals();return S.players.map((_,i)=>({i,t:t[i],pos:1+t.filter(x=>x>t[i]).length})).sort((a,b)=>b.t-a.t)};
+const key=s=>s.trim().toLowerCase();
+function record(){
+  if(S.recorded||!S.hist.length)return;
+  const t=totals(),max=Math.max(...t),rec=[];
+  S.players.forEach((p,i)=>{
+    const nm=(p||'').trim();if(!nm)return;
+    const k=key(nm),st=S.stats[k]||(S.stats[k]={name:nm,wins:0,games:0,best:null});
+    const w=t[i]===max,prevBest=st.best;
+    st.name=nm;st.games++;if(w)st.wins++;
+    if(st.best===null||t[i]>st.best)st.best=t[i];
+    rec.push({k,w,prevBest});
+  });
+  S.recorded=true;S.last=rec;
+}
+function unrecord(){
+  if(!S.recorded)return;
+  (S.last||[]).forEach(r=>{const st=S.stats[r.k];if(!st)return;st.games--;if(r.w)st.wins--;st.best=r.prevBest;if(st.games<=0)delete S.stats[r.k]});
+  S.recorded=false;S.last=null;
+}
+const newGame=()=>{S.recorded=false;S.last=null};
+function board(){
+  const L=Object.values(S.stats).filter(s=>s.games>0).sort((a,b)=>b.wins-a.wins||b.wins/b.games-a.wins/a.games||b.games-a.games);
+  if(!L.length)return `<h2>Ranking de victorias</h2><p class="hint">Todavía no hay partidas terminadas. Cuentan los jugadores con nombre.</p>`;
+  let pos=0,prev=null;
+  return `<h2>Ranking de victorias</h2><div class="scroll"><table class="lb"><thead><tr><th>#</th><th>Jugador</th><th>Victorias</th><th>Partidas</th><th>%</th><th>Récord</th></tr></thead><tbody>${L.map((s,i)=>{if(s.wins!==prev){pos=i+1;prev=s.wins}return `<tr><td>${pos}</td><td>${pos===1&&s.wins>0?hat:''}${esc(s.name)}</td><td>${s.wins}</td><td>${s.games}</td><td>${Math.round(100*s.wins/s.games)}%</td><td>${s.best===null?'–':num(s.best)}</td></tr>`}).join('')}</tbody></table></div>
+<p class="hint">Se guarda en este móvil. Un empate cuenta como victoria para todos los empatados. Los nombres no distinguen mayúsculas.</p>
+<button class="btn ${armed==='wipe'?'warn':''}" data-act="wipe" style="margin-top:12px">${armed==='wipe'?'Toca otra vez para borrar el ranking':'Borrar ranking'}</button>`;
+}
 let armed=null;
 const confirmTap=a=>{if(armed===a){armed=null;return true}armed=a;return false};
 
@@ -140,6 +176,7 @@ function renderSetup(){
 <div class="seg">${[5,6,7,8,9,10].map(n=>`<button data-act="rounds" data-n="${n}" aria-pressed="${S.rounds===n}">${n}</button>`).join('')}</div>
 <p class="hint">En la ronda N se reparten N cartas. La partida completa son 10.</p>
 <button class="btn main big" data-act="start">Zarpar</button>
+${board()}
 ${rules}
 </div></main>`;
 }
@@ -182,6 +219,7 @@ function renderEnd(){
 <div class="poster">${hat}<div class="se">SE BUSCA</div><div class="vm">Vivo o muerto</div><div class="who">${top.map(x=>esc(name(x.i))).join(' y ')}</div><div class="bty">${bounty(top[0].t)}</div><div class="vm">${num(top[0].t)} puntos</div></div></div>
 <ol class="pod">${r.map(x=>`<li><b>${x.pos}º</b><span>${esc(name(x.i))}<small>Recompensa: ${bounty(x.t)}</small></span><b>${num(x.t)}</b></li>`).join('')}</ol>
 <div class="actions" style="justify-content:center"><button class="btn main" data-act="rematch">Revancha</button><button class="btn" data-act="setup">Cambiar jugadores</button><button class="btn" data-act="undo">Deshacer última ronda</button></div>
+${board()}
 ${table()}
 </div></main>`;
 }
@@ -195,7 +233,8 @@ app.addEventListener('click',e=>{
   if(a==='add'&&S.players.length<8)S.players.push('');
   else if(a==='del'&&S.players.length>2)S.players.splice(i,1);
   else if(a==='rounds')S.rounds=+b.dataset.n;
-  else if(a==='start'){S.hist=[];S.draft=fresh();S.phase='play';scrollTo(0,0)}
+  else if(a==='start'){S.hist=[];S.draft=fresh();S.phase='play';newGame();scrollTo(0,0)}
+  else if(a==='wipe'){if(confirmTap('wipe')){S.stats={};S.last=null}}
   else if(a==='inc'||a==='dec'){
     const k=b.dataset.k,d=S.draft[i],n=cur(),step=k==='bonus'?10:1,max=k==='bonus'?300:n;
     d[k]=Math.max(0,Math.min(max,d[k]+(a==='inc'?step:-step)));
@@ -205,15 +244,15 @@ app.addEventListener('click',e=>{
     if(sum===n||confirmTap('close')){
       S.hist.push({n,rows:S.draft.map(d=>({bid:d.bid,won:d.won,bonus:d.bonus,pts:pts(d.bid,d.won,d.bonus,n)}))});
       S.draft=fresh();armed=null;
-      if(S.hist.length>=S.rounds)S.phase='end';
+      if(S.hist.length>=S.rounds){S.phase='end';record()}
       scrollTo(0,0);
     }
   }
-  else if(a==='undo'&&S.hist.length){const l=S.hist.pop();S.draft=l.rows.map(x=>({bid:x.bid,won:x.won,bonus:x.bonus}));S.phase='play'}
-  else if(a==='finish'){if(confirmTap('finish')){S.phase='end';scrollTo(0,0)}}
-  else if(a==='new'){if(confirmTap('new')){S.phase='setup';S.hist=[];S.draft=[];scrollTo(0,0)}}
-  else if(a==='rematch'){S.hist=[];S.draft=fresh();S.phase='play';scrollTo(0,0)}
-  else if(a==='setup'){S.phase='setup';S.hist=[];S.draft=[]}
+  else if(a==='undo'&&S.hist.length){if(S.phase==='end')unrecord();const l=S.hist.pop();S.draft=l.rows.map(x=>({bid:x.bid,won:x.won,bonus:x.bonus}));S.phase='play'}
+  else if(a==='finish'){if(confirmTap('finish')){S.phase='end';record();scrollTo(0,0)}}
+  else if(a==='new'){if(confirmTap('new')){S.phase='setup';S.hist=[];S.draft=[];newGame();scrollTo(0,0)}}
+  else if(a==='rematch'){S.hist=[];S.draft=fresh();S.phase='play';newGame();scrollTo(0,0)}
+  else if(a==='setup'){S.phase='setup';S.hist=[];S.draft=[];newGame()}
   save();render();
 });
 app.addEventListener('input',e=>{const t=e.target;if(t.matches('#names input')){S.players[+t.dataset.i]=t.value;save()}});
