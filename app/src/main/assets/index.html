@@ -27,6 +27,8 @@ h2{font:400 30px/1.1 'Pirata One',serif;margin:24px 0 12px}
 .rk li{background:rgba(0,0,0,.22);border-radius:999px;padding:6px 14px;display:flex;gap:8px;align-items:baseline;white-space:nowrap}
 .rk li:first-child{background:var(--bone);color:var(--red)}
 .rk b{font-weight:700}
+.rk .hat{width:28px;height:14px;align-self:center;flex:none}
+.poster .hat{display:block;width:120px;height:56px;margin:-4px auto 6px}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
 .btn{min-height:48px;padding:0 20px;border-radius:12px;font-weight:700;font-size:17px;border:1.5px solid var(--line);background:transparent}
@@ -76,6 +78,12 @@ tfoot td{font-weight:700;font-size:17px;border-bottom:0}
 .pod li{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;font-size:18px}
 .pod li span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .pod li b{font-size:22px}
+.pod li small{display:block;font-weight:400;font-size:14px;color:var(--mute);overflow:hidden;text-overflow:ellipsis}
+.poster{max-width:340px;margin:14px auto 0;background:linear-gradient(160deg,#efe1bd,#dcc594);color:#3b2a16;border-radius:6px;padding:22px 20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.25),inset 0 0 40px rgba(110,70,20,.25);border:2px solid #b89b62}
+.poster .se{font:400 52px/1 'Pirata One',serif;letter-spacing:.04em}
+.poster .vm{font-size:14px;font-weight:600;margin-top:4px}
+.poster .who{color:#3b2a16;font-size:clamp(38px,10vw,56px);margin:14px 0 6px;border-top:2px solid #b89b62;border-bottom:2px solid #b89b62;padding:10px 0;overflow-wrap:anywhere}
+.poster .bty{font:400 32px/1.1 'Pirata One',serif;white-space:nowrap}
 details{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px}
 summary{font-weight:700;cursor:pointer;min-height:28px}
 details ul{padding-left:20px;margin:10px 0 4px}
@@ -99,6 +107,7 @@ const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const app=document.getElementById('app');
 const skull=`<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 41 41 30M7 30l34 11" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><path d="M24 4C14.6 4 9 10.3 9 18.5c0 5 2.2 8.4 5 10.4V34h20v-5.1c2.8-2 5-5.4 5-10.4C39 10.3 33.4 4 24 4z" fill="currentColor"/><circle cx="18" cy="18.5" r="3.8" fill="var(--red)"/><circle cx="30" cy="18.5" r="3.8" fill="var(--red)"/><path d="M22 26.5h4L24 23z" fill="var(--red)"/></svg>`;
+const hat=`<svg class="hat" viewBox="0 0 64 30" aria-hidden="true"><ellipse cx="32" cy="23" rx="30" ry="6.5" fill="#e6c068" stroke="#a9832f" stroke-width="1.2"/><path d="M16 23C15 7 49 7 48 23z" fill="#f0cf7a" stroke="#a9832f" stroke-width="1.2"/><path d="M16.3 19.5C22 17 42 17 47.7 19.5L48 23C40 25 24 25 16 23z" fill="#c8102e"/><path d="M8 24.5q24 5 48 0M22 12q10-3 20 0" fill="none" stroke="#a9832f" stroke-width=".8" opacity=".6"/></svg>`;
 const name=i=>(S.players[i]||'').trim()||`Jugador ${i+1}`;
 const cur=()=>S.hist.length+1;
 const pts=(b,w,bo,n)=>b===0?(w===0?10*n+bo:-10*n):(w===b?20*b+bo:-10*Math.abs(w-b));
@@ -127,7 +136,7 @@ function table(){
 
 function renderSetup(){
   const P=S.players;
-  app.innerHTML=`<header class="band top"><div class="wrap"><h1>${skull}Marcador Skull King</h1><p class="sub">Apuestas, bazas y bonus. Las cuentas corren de mi parte.</p></div></header>
+  app.innerHTML=`<header class="band top"><div class="wrap"><h1>${skull}Marcador Skull King</h1><p class="sub">Apunta apuestas, bazas y bonus. Las cuentas van solas.</p></div></header>
 <main class="band"><div class="wrap setup">
 <h2 style="margin-top:0">Tripulación</h2>
 <div id="names">${P.map((p,i)=>`<div class="nm"><input data-i="${i}" value="${esc(p)}" placeholder="Jugador ${i+1}" maxlength="16" autocomplete="off" aria-label="Nombre del jugador ${i+1}"><button class="ico" data-act="del" data-i="${i}" aria-label="Quitar a ${esc(name(i))}" ${P.length<=2?'disabled':''}>×</button></div>`).join('')}</div>
@@ -151,8 +160,8 @@ function renderPlay(){
   const ok=sum===n;
   const closeLbl=armed==='close'?`Suman ${sum} de ${n}. Toca otra vez para cerrar`:'Cerrar ronda';
   app.innerHTML=`<header class="band top"><div class="wrap"><h1>${skull}Ronda ${n} de ${S.rounds}</h1>
-<p class="sub">${n} ${n===1?'carta':'cartas'} por jugador · apuestas totales: ${bids} ${bids>n?'(más que bazas: habrá sangre)':bids<n?'(menos que bazas)':'(justas)'}</p>
-<ol class="rk">${rank().map(r=>`<li><span>${r.pos}º</span><b>${esc(name(r.i))}</b><span>${num(r.t)}</span></li>`).join('')}</ol></div></header>
+<p class="sub">${n} ${n===1?'carta':'cartas'} por jugador · apuestas: ${bids} de ${n}</p>
+<ol class="rk">${rank().map(r=>`<li>${r.pos===1&&S.hist.length?hat:''}<span>${r.pos}º</span><b>${esc(name(r.i))}</b><span>${num(r.t)}</span></li>`).join('')}</ol></div></header>
 <main class="band"><div class="wrap">
 <div class="cards">${S.draft.map((d,i)=>{
   const p=pts(d.bid,d.won,d.bonus,n),hit=d.bid===d.won;
@@ -171,10 +180,12 @@ ${rules}
 
 function renderEnd(){
   const r=rank(),top=r.filter(x=>x.pos===1);
+  const bounty=t=>'฿ '+(Math.max(0,t)*1e6).toLocaleString('es-ES');
   app.innerHTML=`<header class="band top"><div class="wrap"><h1>${skull}Fin de la partida</h1><p class="sub">${S.hist.length} ${S.hist.length===1?'ronda jugada':'rondas jugadas'}</p></div></header>
 <main class="band"><div class="wrap">
-<div class="win"><div>${top.length>1?'Empate en cabeza':'Rey de los mares'}</div><div class="who">${top.map(x=>esc(name(x.i))).join(' y ')}</div><div>${num(top[0].t)} puntos</div></div>
-<ol class="pod">${r.map(x=>`<li><b>${x.pos}º</b><span>${esc(name(x.i))}</span><b>${num(x.t)}</b></li>`).join('')}</ol>
+<div class="win"><div>${top.length>1?'Empate en cabeza':'Ganador'}</div>
+<div class="poster">${hat}<div class="se">SE BUSCA</div><div class="vm">Vivo o muerto</div><div class="who">${top.map(x=>esc(name(x.i))).join(' y ')}</div><div class="bty">${bounty(top[0].t)}</div><div class="vm">${num(top[0].t)} puntos</div></div></div>
+<ol class="pod">${r.map(x=>`<li><b>${x.pos}º</b><span>${esc(name(x.i))}<small>Recompensa: ${bounty(x.t)}</small></span><b>${num(x.t)}</b></li>`).join('')}</ol>
 <div class="actions" style="justify-content:center"><button class="btn main" data-act="rematch">Revancha</button><button class="btn" data-act="setup">Cambiar jugadores</button><button class="btn" data-act="undo">Deshacer última ronda</button></div>
 ${table()}
 </div></main>`;
